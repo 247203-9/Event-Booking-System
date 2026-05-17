@@ -1,0 +1,399 @@
+﻿@page "/"
+@using EventBookingSystem.Models
+@using EventBookingSystem.Services
+@inject DatabaseService DbService
+@rendermode InteractiveServer
+
+<style>
+    .premium-banner {
+        background: #0f172a;
+        border-bottom: 5px solid #ffc107;
+    }
+
+    .modern-card {
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 14px;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+        transition: all 0.25s ease;
+        position: relative;
+        overflow: hidden;
+    }
+
+        .modern-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+            border-color: #cbd5e1;
+        }
+
+    .price-pill {
+        background: #fef3c7;
+        color: #92400e;
+        font-weight: 800;
+        border-radius: 8px;
+        padding: 6px 14px;
+        border: 1px solid #fde68a;
+        font-size: 1.1rem;
+    }
+
+    .form-box {
+        border-radius: 8px;
+        border: 1px solid #cbd5e1;
+    }
+
+        .form-box:focus {
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+            outline: none;
+        }
+
+    .billing-breakdown {
+        background: #f8fafc;
+        border: 1px dashed #cbd5e1;
+        border-radius: 8px;
+    }
+
+    .tab-btn {
+        cursor: pointer;
+        padding: 10px 20px;
+        font-weight: 600;
+        border-radius: 8px;
+        border: none;
+        transition: all 0.2s;
+    }
+
+        .tab-btn.active {
+            background: #2563eb;
+            color: white;
+        }
+
+        .tab-btn.inactive {
+            background: #e2e8f0;
+            color: #475569;
+        }
+
+    .rating-star {
+        cursor: pointer;
+        color: #cbd5e1;
+        transition: color 0.1s;
+        font-size: 1.2rem;
+    }
+
+        .rating-star:hover, .rating-star.active {
+            color: #f59e0b;
+        }
+
+    .urgent-badge {
+        background: #ef4444;
+        color: white;
+        padding: 4px 10px;
+        font-size: 0.75rem;
+        font-weight: 700;
+        border-radius: 4px;
+        animation: pulse 1.5s infinite;
+    }
+
+    .timeline-card {
+        background: #ffffff;
+        border-left: 4px solid #2563eb;
+        border-top: 1px solid #e2e8f0;
+        border-right: 1px solid #e2e8f0;
+        border-bottom: 1px solid #e2e8f0;
+        border-radius: 0 8px 8px 0;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+    }
+
+    @@keyframes pulse {
+        0% {
+            opacity: 1;
+        }
+
+        50% {
+            opacity: 0.5;
+        }
+
+        100% {
+            opacity: 1;
+        }
+    }
+</style>
+
+<div class="container-fluid px-4 py-4 bg-light min-vh-100">
+
+    <div class="p-5 mb-4 text-white premium-banner rounded-3 shadow">
+        <div class="d-flex justify-content-between align-items-center flex-wrap mb-2">
+            <span class="badge bg-dark text-warning border border-warning px-3 py-2 text-uppercase fw-semibold">Department of Computer Science</span>
+            <span class="badge bg-success px-2 py-1 small">v5.2 Ultimate Stack</span>
+        </div>
+        <h1 class="display-5 fw-bold m-0 text-white tracking-tight">Air University, Kharian Campus</h1>
+        <p class="text-warning mb-0 mt-1 fw-semibold fs-5">🚀 Event Management System </p>
+    </div>
+
+    <div class="d-flex gap-2 mb-4">
+        <button class="tab-btn @(activeTab == "All" ? "active" : "inactive")" @onclick='() => SetActiveTab("All")'>📋 All Events (@DbService.Events.Count)</button>
+        <button class="tab-btn @(activeTab == "Available" ? "active" : "inactive")" @onclick='() => SetActiveTab("Available")'>🟢 Active Slots Only (@DbService.Events.Count(e => e.AvailableSeats > 0))</button>
+        <button class="tab-btn @(activeTab == "SoldOut" ? "active" : "inactive")" @onclick='() => SetActiveTab("SoldOut")'>🔴 Sold Out Streams (@DbService.Events.Count(e => e.AvailableSeats == 0))</button>
+    </div>
+
+    <div class="card p-3 mb-4 rounded-3 border-0 shadow-sm bg-white">
+        <input type="text" class="form-control bg-light border-0 p-3 fs-6 form-box" placeholder="🔎 Filter enterprise event blocks instantly..." @bind="searchQuery" @bind:event="oninput" />
+    </div>
+
+    @if (!string.IsNullOrEmpty(notificationMessage))
+    {
+        <div class="alert alert-@notificationClass border-0 shadow rounded-3 d-flex align-items-center justify-content-between p-3 mb-4">
+            <div><strong>Notification:</strong> @notificationMessage</div>
+            <button type="button" class="btn-close" @onclick="ClearNotification"></button>
+        </div>
+    }
+
+    <div class="row mb-5">
+        @foreach (var ev in FilteredEvents)
+        {
+            var timeRemaining = ev.EventDate - DateTime.Now;
+            bool isUrgent = timeRemaining.TotalDays <= 3;
+
+            <div class="col-xl-6 col-lg-12 mb-4">
+                <div class="card h-100 modern-card">
+                    <div class="card-body p-4 d-flex flex-column h-100">
+
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <h5 class="fw-bold text-dark m-0 pe-2" style="font-size:1.2rem; line-height: 1.4;">@ev.Title</h5>
+                            <div class="price-pill text-nowrap">Rs. @ev.TicketPrice.ToString("N0")</div>
+                        </div>
+
+                        <div class="d-flex align-items-center mb-3 small">
+                            <span class="text-warning fw-bold me-2">⭐ @DbService.GetAverageRating(ev.Id) / 5.0</span>
+                            <span class="text-muted me-2">| Rate:</span>
+                            @for (int i = 1; i <= 5; i++)
+                            {
+                                int currentStar = i;
+                                <span class="rating-star me-1" @onclick="() => SubmitRating(ev.Id, currentStar)">★</span>
+                            }
+                            @if (isUrgent && ev.AvailableSeats > 0)
+                            {
+                                <span class="ms-auto urgent-badge">⏳ CLOSING SOON</span>
+                            }
+                        </div>
+
+                        <p class="text-secondary mb-4 flex-grow-1 small">@ev.Description</p>
+
+                        <div class="row row-cols-2 g-3 mb-4 p-3 bg-light rounded-3 small border border-light">
+                            <div class="col"><span class="text-muted d-block text-uppercase fw-bold" style="font-size:0.6rem;">📍 Venue Matrix</span><span class="text-dark fw-semibold">@ev.Venue</span></div>
+                            <div class="col"><span class="text-muted d-block text-uppercase fw-bold" style="font-size:0.6rem;">📅 Date Pipeline</span><span class="text-dark fw-semibold">@ev.EventDate.ToString("dd MMM yyyy")</span></div>
+                            <div class="col">
+                                <span class="text-muted d-block text-uppercase fw-bold" style="font-size:0.6rem;">🎟️ Ticket Allocation</span>
+                                <span class="badge @(ev.AvailableSeats == 0 ? "bg-danger" : "bg-success") text-white">
+                                    @ev.AvailableSeats Seats left
+                                </span>
+                            </div>
+                            <div class="col"><span class="text-muted d-block text-uppercase fw-bold" style="font-size:0.6rem;">✨ Rating Metrics</span><span class="text-muted">(@DbService.EventRatings[ev.Id].Count student logs)</span></div>
+                        </div>
+
+                        <div class="p-3 border rounded-3 bg-white @(ev.AvailableSeats == 0 ? "opacity-50" : "")">
+                            <span class="text-muted text-uppercase fw-bold d-block mb-2" style="font-size:0.65rem;">Multi-Tier Booking Desk</span>
+
+                            <div class="row g-2 mb-3">
+                                <div class="col-sm-6">
+                                    <input type="text" class="form-control form-control-sm form-box" placeholder="Student Name" @bind="bookingModels[ev.Id].CustomerName" disabled="@(ev.AvailableSeats == 0)" />
+                                </div>
+                                <div class="col-sm-6">
+                                    <input type="email" class="form-control form-control-sm form-box" placeholder="Student Email" @bind="bookingModels[ev.Id].CustomerEmail" disabled="@(ev.AvailableSeats == 0)" />
+                                </div>
+                                <div class="col-sm-6 mt-2">
+                                    <select class="form-select form-select-sm form-box" @bind="ticketTiers[ev.Id]" @bind:event="onchange" disabled="@(ev.AvailableSeats == 0)">
+                                        <option value="Regular">🎫 Regular Standard Tier</option>
+                                        <option value="VIP">👑 VIP Executive Lounge (+ Rs. 1,500)</option>
+                                    </select>
+                                </div>
+                                <div class="col-sm-6 d-flex align-items-center mt-2 justify-content-end">
+                                    <span class="small me-2 text-secondary">Count:</span>
+                                    <input type="number" class="form-control text-center fw-bold form-control-sm form-box w-50" min="1" max="5" @bind="bookingModels[ev.Id].SeatsBooked" @bind:event="oninput" disabled="@(ev.AvailableSeats == 0)" />
+                                </div>
+                            </div>
+
+                            @{
+                                decimal basePrice = ev.TicketPrice;
+                                if (ticketTiers[ev.Id] == "VIP") basePrice += 1500;
+                                decimal grossPrice = basePrice * bookingModels[ev.Id].SeatsBooked;
+                            }
+                            <div class="billing-breakdown p-3 mb-3 small text-secondary">
+                                <div class="d-flex justify-content-between mb-1">
+                                    <span>Calculated Base (@ticketTiers[ev.Id]):</span>
+                                    <strong>Rs. @grossPrice.ToString("N0")</strong>
+                                </div>
+                                <div class="d-flex justify-content-between text-dark fw-bold pt-1 border-top">
+                                    <span>Net Balance Payable:</span>
+                                    <span class="text-primary">Rs. @grossPrice.ToString("N0")</span>
+                                </div>
+                            </div>
+
+                            <button class="btn btn-primary btn-sm w-100 fw-semibold py-2" @onclick="() => ProcessBooking(ev.Id, grossPrice)" disabled="@(ev.AvailableSeats == 0)">
+                                @(ev.AvailableSeats == 0 ? "Sold Out Security Active" : "Authorize System Transaction")
+                            </button>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+
+    <div class="card border-0 shadow-sm rounded-3 bg-white p-4 mb-5">
+        <h5 class="fw-bold text-dark mb-1 d-flex align-items-center">
+            <svg class="text-primary me-2" width="22" height="22" fill="currentColor" viewBox="0 0 16 16">
+                <path d="M8 15c4.418 0 8-3.134 8-7s-3.582-7-8-7-8 3.134-8 7c0 1.76.743 3.37 1.97 4.6-.097 1.016-.417 2.13-.771 2.966-.079.186.074.394.273.362 2.256-.37 3.597-.938 4.18-1.234A9.06 9.06 0 0 0 8 15z" />
+            </svg>
+            Student Feedback & Discussion Hub
+        </h5>
+
+        <div class="row g-2 mb-4 p-3 bg-light rounded-3 mt-2">
+            <div class="col-sm-3">
+                <input type="text" class="form-control form-box" placeholder="Your Name/ID" @bind="feedbackUser" />
+            </div>
+            <div class="col-sm-7">
+                <input type="text" class="form-control form-box" placeholder="Write your public query or announcement details here..." @bind="feedbackText" />
+            </div>
+            <div class="col-sm-2">
+                <button class="btn btn-primary w-100 fw-semibold h-100" @onclick="SubmitFeedback">Post Comment</button>
+            </div>
+        </div>
+
+        <div class="feedback-stream mt-3">
+            <h6 class="text-uppercase tracking-wider fw-bold text-secondary mb-3" style="font-size: 0.75rem;">Live Broadcast Stream (@DbService.Feedbacks.Count)</h6>
+
+            @if (!DbService.Feedbacks.Any())
+            {
+                <div class="p-4 text-center text-muted rounded-3 border border-dashed bg-light">
+                    No community notes dispatched yet. Be the first to start the thread!
+                </div>
+            }
+            else
+            {
+                <div class="d-flex flex-column gap-3">
+                    @foreach (var feed in DbService.Feedbacks)
+                    {
+                        var parts = feed.Split(new[] { ':' }, 2);
+                        string user = parts.Length > 0 ? parts[0].Trim() : "Anonymous Student";
+                        string msg = parts.Length > 1 ? parts[1].Trim() : feed;
+
+                        <div class="p-3 timeline-card">
+                            <div class="d-flex align-items-center mb-1">
+                                <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center fw-bold me-2" style="width: 28px; height: 28px; font-size: 0.8rem;">
+                                    @user.Substring(0, Math.Min(1, user.Length)).ToUpper()
+                                </div>
+                                <strong class="text-dark small">@user</strong>
+                                <span class="badge bg-light text-success border border-success ms-auto small" style="font-size: 0.65rem;">Verified Student Node</span>
+                            </div>
+                            <p class="mb-0 text-secondary mt-1 ps-4 small" style="line-height: 1.5;">@msg</p>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    private string searchQuery = "";
+    private string activeTab = "All";
+    private string notificationMessage = "";
+    private string notificationClass = "success";
+    private Dictionary<int, Booking> bookingModels = new();
+    private Dictionary<int, string> ticketTiers = new();
+    private string feedbackUser = "";
+    private string feedbackText = "";
+
+    protected override void OnInitialized() => InitializeForms();
+
+    private void InitializeForms()
+    {
+        foreach (var ev in DbService.Events)
+        {
+            if (!bookingModels.ContainsKey(ev.Id))
+            {
+                bookingModels[ev.Id] = new Booking { EventId = ev.Id, SeatsBooked = 1 };
+                ticketTiers[ev.Id] = "Regular";
+            }
+        }
+    }
+
+    private void SetActiveTab(string tabName)
+    {
+        activeTab = tabName;
+        StateHasChanged();
+    }
+
+    private IEnumerable<Event> FilteredEvents => DbService.Events
+        .Where(e => (string.IsNullOrEmpty(searchQuery) ||
+                     e.Title.Contains(searchQuery, StringComparison.OrdinalIgnoreCase) ||
+                     e.Venue.Contains(searchQuery, StringComparison.OrdinalIgnoreCase)) &&
+                    (activeTab == "All" ||
+                     (activeTab == "Available" && e.AvailableSeats > 0) ||
+                     (activeTab == "SoldOut" && e.AvailableSeats == 0)));
+
+    private void SubmitRating(int eventId, int stars)
+    {
+        if (DbService.EventRatings.ContainsKey(eventId))
+        {
+            DbService.EventRatings[eventId].Add(stars);
+            notificationMessage = $"Recorded {stars}-Star student rating successfully!";
+            notificationClass = "info";
+            StateHasChanged();
+        }
+    }
+
+    private void ProcessBooking(int eventId, decimal dynamicComputedPrice)
+    {
+        var formModel = bookingModels[eventId];
+        var currentEvent = DbService.Events.FirstOrDefault(e => e.Id == eventId);
+
+        if (string.IsNullOrWhiteSpace(formModel.CustomerName) || string.IsNullOrWhiteSpace(formModel.CustomerEmail))
+        {
+            notificationMessage = "Validation Error: Student name and email cannot be blank.";
+            notificationClass = "danger";
+            return;
+        }
+
+        bool isSuccess = DbService.CreateBooking(new Booking
+        {
+            EventId = formModel.EventId,
+            CustomerName = formModel.CustomerName,
+            CustomerEmail = formModel.CustomerEmail,
+            SeatsBooked = formModel.SeatsBooked,
+            TotalPaid = dynamicComputedPrice
+        });
+
+        if (isSuccess)
+        {
+            notificationMessage = $"Transaction Cleared! Assigned Tier: {ticketTiers[eventId]}. Gross Total: Rs. {dynamicComputedPrice:N0}.";
+            notificationClass = "success";
+            bookingModels[eventId] = new Booking { EventId = eventId, SeatsBooked = 1 };
+            ticketTiers[eventId] = "Regular";
+            StateHasChanged();
+        }
+    }
+
+    private void SubmitFeedback()
+    {
+        if (string.IsNullOrWhiteSpace(feedbackUser) || string.IsNullOrWhiteSpace(feedbackText))
+        {
+            notificationMessage = "Input Error: Feedback fields cannot be left blank.";
+            notificationClass = "warning";
+            return;
+        }
+
+        DbService.Feedbacks.Add($"{feedbackUser}: {feedbackText}");
+        notificationMessage = "Comment posted successfully!";
+        notificationClass = "success";
+        feedbackUser = "";
+        feedbackText = "";
+        StateHasChanged();
+    }
+
+    private void ClearNotification()
+    {
+        notificationMessage = "";
+        StateHasChanged();
+    }
+}

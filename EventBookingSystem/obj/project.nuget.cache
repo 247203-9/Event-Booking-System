@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "dgSpecHash": "M/sNuIFtX3M=",
+  "success": true,
+  "projectFilePath": "C:\\Users\\Ayminn\\source\\repos\\EventBookingSystem\\EventBookingSystem\\EventBookingSystem.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\Ayminn\\.nuget\\packages\\microsoft.aspnetcore.app.internal.assets\\10.0.8\\microsoft.aspnetcore.app.internal.assets.10.0.8.nupkg.sha512"
+  ],
+  "logs": []
+}

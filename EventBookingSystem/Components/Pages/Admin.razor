@@ -1,0 +1,218 @@
+﻿@page "/admin"
+@using EventBookingSystem.Models
+@using EventBookingSystem.Services
+@inject DatabaseService DbService
+
+<div class="container-fluid mt-4 px-4">
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card bg-primary text-white shadow-sm border-0">
+                <div class="card-body text-center py-4">
+                    <h6 class="opacity-75 text-uppercase small tracking-wider">Total Revenue Generated</h6>
+                    <h2 class="fw-bold">Rs. @DbService.Bookings.Sum(b => b.TotalPaid).ToString("N0")</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card bg-dark text-white shadow-sm border-0">
+                <div class="card-body text-center py-4">
+                    <h6 class="opacity-75 text-uppercase small tracking-wider">Total Tickets Booked</h6>
+                    <h2 class="fw-bold">@DbService.Bookings.Sum(b => b.SeatsBooked) Pass(es)</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card bg-warning text-dark shadow-sm border-0">
+                <div class="card-body text-center py-4">
+                    <h6 class="opacity-75 text-uppercase small tracking-wider">Active Live Events</h6>
+                    <h2 class="fw-bold">@DbService.Events.Count Active Logs</h2>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-xl-5 col-lg-12 mb-4">
+            <div class="card shadow-sm border-0 rounded-3 mb-4">
+                <div class="card-header bg-dark text-white fw-bold py-3">🛡️ Create New Campus Event (CRUD Create)</div>
+                <div class="card-body bg-light">
+                    <div class="mb-2">
+                        <label class="small fw-bold text-secondary">Event Title</label>
+                        <input type="text" class="form-control" @bind="newEvent.Title" placeholder="e.g., Seminar on AI" />
+                    </div>
+                    <div class="mb-2">
+                        <label class="small fw-bold text-secondary">Description</label>
+                        <textarea class="form-control" @bind="newEvent.Description" rows="2" placeholder="Brief info..."></textarea>
+                    </div>
+                    <div class="mb-2">
+                        <label class="small fw-bold text-secondary">Venue Location</label>
+                        <input type="text" class="form-control" @bind="newEvent.Venue" placeholder="e.g., Main Auditorium" />
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col">
+                            <label class="small fw-bold text-secondary">Price (Rs.)</label>
+                            <input type="number" class="form-control" @bind="newEvent.TicketPrice" />
+                        </div>
+                        <div class="col">
+                            <label class="small fw-bold text-secondary">Capacity</label>
+                            <input type="number" class="form-control" @bind="newEvent.TotalCapacity" />
+                        </div>
+                    </div>
+                    <button class="btn btn-success w-100 fw-bold" @onclick="SaveNewEvent">➕ Publish Event Globally</button>
+                    @if (!string.IsNullOrEmpty(statusMsg))
+                    {
+                        <div class="alert alert-info mt-2 py-2 small">@statusMsg</div>
+                    }
+                </div>
+            </div>
+
+            <div class="card shadow-sm border-0 rounded-3">
+                <div class="card-header bg-danger text-white fw-bold py-3">🗑️ Danger Control Board (CRUD Delete)</div>
+                <div class="card-body p-0 bg-white">
+                    <ul class="list-group list-group-flush small">
+                        @foreach (var item in DbService.Events)
+                        {
+                            <li class="list-group-item d-flex justify-content-between align-items-center py-3">
+                                <div>
+                                    <strong class="text-dark">@item.Title</strong><br>
+                                    <span class="text-muted text-xs">📍 @item.Venue | Price: Rs. @item.TicketPrice</span>
+                                </div>
+                                <button class="btn btn-danger btn-sm px-2 py-1 fw-bold" @onclick="() => TerminateEvent(item.Id)">Delete</button>
+                            </li>
+                        }
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-7 col-lg-12">
+            <div class="card shadow-sm border-0 rounded-3 mb-4">
+                <div class="card-header bg-secondary text-white fw-bold py-3">📋 Live Transaction Logs & Invoices</div>
+                <div class="card-body p-0 bg-white">
+                    @if (!DbService.Bookings.Any())
+                    {
+                        <p class="p-4 text-muted m-0 text-center">No structural ticket sales recorded yet.</p>
+                    }
+                    else
+                    {
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle m-0 table-striped small">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Customer</th>
+                                        <th>Seats</th>
+                                        <th>Total Paid</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var b in DbService.Bookings)
+                                    {
+                                        <tr>
+                                            <td>#@b.Id</td>
+                                            <td><strong>@b.CustomerName</strong><br><span class="text-muted text-xs">@b.CustomerEmail</span></td>
+                                            <td><span class="badge bg-secondary px-2">@b.SeatsBooked Seats</span></td>
+                                            <td><strong>Rs. @b.TotalPaid.ToString("N0")</strong></td>
+                                            <td><button class="btn btn-dark btn-sm py-1" @onclick="() => PrintInvoice(b)">🖨️ Invoice</button></td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <div class="card shadow-sm border-0 rounded-3">
+                <div class="card-header bg-info text-dark fw-bold py-3">📥 Received Student Inquiries Pool</div>
+                <div class="card-body p-0 bg-white">
+                    @if (!DbService.Feedbacks.Any())
+                    {
+                        <p class="p-4 text-muted text-center m-0">No active digital student suggestions logged yet.</p>
+                    }
+                    else
+                    {
+                        <div class="list-group list-group-flush">
+                            @foreach (var feed in DbService.Feedbacks)
+                            {
+                                <div class="list-group-item p-3 border-start border-3 border-info mb-1 bg-light">
+                                    <div class="d-flex w-100 justify-content-between">
+                                        <h6 class="mb-1 text-dark fw-bold">🔊 Campus Query Dispatch</h6>
+                                        <small class="text-muted">Live Stream</small>
+                                    </div>
+                                    <p class="mb-0 text-secondary small">@feed</p>
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@if (selectedBookingReport != null)
+{
+    <div class="modal fade show d-block" style="background: rgba(0,0,0,0.6);" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-3 border-dark">
+                <div class="modal-header bg-light">
+                    <h5 class="modal-title fw-bold">🎟️ AIR UNIVERSITY INVOICE SYSTEM</h5>
+                    <button type="button" class="btn-close" @onclick="CloseInvoice"></button>
+                </div>
+                <div class="modal-body text-center bg-white">
+                    <div class="border border-secondary p-3">
+                        <h4 class="text-uppercase tracking-wider fw-bold m-0">Entry Voucher Slip</h4>
+                        <hr />
+                        <p class="text-start"><strong>Ticket Reference:</strong> AU-BK-00@selectedBookingReport.Id</p>
+                        <p class="text-start"><strong>Attendee Holder:</strong> @selectedBookingReport.CustomerName</p>
+                        <p class="text-start"><strong>Verified Email:</strong> @selectedBookingReport.CustomerEmail</p>
+                        <p class="text-start"><strong>Allocated Seats:</strong> @selectedBookingReport.SeatsBooked Person(s)</p>
+                        <hr />
+                        <h5 class="text-success fw-bold">Amount Paid: Rs. @selectedBookingReport.TotalPaid.ToString("N0")</h5>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-primary w-100 fw-bold" onclick="window.print()">Print Report Slip</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private Event newEvent = new() { TicketPrice = 2000, TotalCapacity = 100 };
+    private string statusMsg = "";
+    private Booking? selectedBookingReport = null;
+
+    private void SaveNewEvent()
+    {
+        if (string.IsNullOrWhiteSpace(newEvent.Title) || string.IsNullOrWhiteSpace(newEvent.Venue))
+        {
+            statusMsg = "Error: Input strings are blank.";
+            return;
+        }
+
+        newEvent.Id = DbService.Events.Any() ? DbService.Events.Max(e => e.Id) + 1 : 1;
+        newEvent.AvailableSeats = newEvent.TotalCapacity;
+
+        DbService.Events.Add(newEvent);
+        statusMsg = $"Success: '{newEvent.Title}' deployed live.";
+        newEvent = new Event { TicketPrice = 2000, TotalCapacity = 100 };
+    }
+
+    // Dynamic CRUD Delete processing execution
+    private void TerminateEvent(int targetId)
+    {
+        var match = DbService.Events.FirstOrDefault(e => e.Id == targetId);
+        if (match != null)
+        {
+            DbService.Events.Remove(match);
+            statusMsg = "Notice: Selected event log erased from application matrix.";
+        }
+    }
+
+    private void PrintInvoice(Booking b) => selectedBookingReport = b;
+    private void CloseInvoice() => selectedBookingReport = null;
+}
